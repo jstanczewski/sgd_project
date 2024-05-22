@@ -1,0 +1,3 @@
+C:/Users/Jedrzej/Desktop/sgd_project/cmake-build-debug-visual-studio/CMakeFiles/sgd.dir
+C:/Users/Jedrzej/Desktop/sgd_project/cmake-build-debug-visual-studio/CMakeFiles/edit_cache.dir
+C:/Users/Jedrzej/Desktop/sgd_project/cmake-build-debug-visual-studio/CMakeFiles/rebuild_cache.dir
