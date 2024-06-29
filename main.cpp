@@ -12,8 +12,13 @@ const int NUM_UNITS_X = 20;
 const int NUM_UNITS_Y = (SCREEN_HEIGHT - HEADER_HEIGHT) / ((SCREEN_WIDTH / NUM_UNITS_X));
 const int UNIT_SIZE = SCREEN_WIDTH / NUM_UNITS_X;
 const int FONT_SIZE = 32;
+const SDL_Color black = { 0, 0, 0, 255 };
+const SDL_Color red = { 255, 0, 0, 255 };
+const SDL_Color green = { 0, 100, 0, 255 };
+
 
 enum Direction { UP, DOWN, LEFT, RIGHT };
+enum GameState { PLAYING, GAME_OVER };
 
 struct Position {
     int x, y;
@@ -22,8 +27,14 @@ struct Position {
 class Snake {
 public:
     Snake() {
+        reset();
+    }
+
+    void reset() {
+        segments.clear();
         segments.push_back({ 0, HEADER_HEIGHT + (SCREEN_HEIGHT - HEADER_HEIGHT) / 2 });
         direction = RIGHT;
+        growing = false;
     }
 
     void move() {
@@ -166,9 +177,7 @@ void renderChessboard(SDL_Renderer* renderer) {
 }
 
 void renderHeader(SDL_Renderer* renderer, TTF_Font* font, int score) {
-    SDL_Color black = { 0, 0, 0, 255 };
-
-    SDL_Surface* surfaceMessage = TTF_RenderText_Solid(font, "Wonsz", black);
+    SDL_Surface* surfaceMessage = TTF_RenderText_Solid(font, "Snake", black);
     SDL_Texture* message = SDL_CreateTextureFromSurface(renderer, surfaceMessage);
     SDL_Rect messageRect = { 40, 10, surfaceMessage->w, surfaceMessage->h };
     SDL_RenderCopy(renderer, message, NULL, &messageRect);
@@ -182,6 +191,33 @@ void renderHeader(SDL_Renderer* renderer, TTF_Font* font, int score) {
     SDL_RenderCopy(renderer, message, NULL, &messageRect);
     SDL_FreeSurface(surfaceMessage);
     SDL_DestroyTexture(message);
+}
+
+void renderGameOver(SDL_Renderer* renderer, TTF_Font* font) {
+    SDL_Surface* surfaceMessage = TTF_RenderText_Solid(font, "You lost!", red);
+    SDL_Texture* message = SDL_CreateTextureFromSurface(renderer, surfaceMessage);
+    SDL_Rect messageRect = { SCREEN_WIDTH / 2 - surfaceMessage->w / 2, SCREEN_HEIGHT / 2 - surfaceMessage->h / 2, surfaceMessage->w, surfaceMessage->h };
+    SDL_RenderCopy(renderer, message, NULL, &messageRect);
+    SDL_FreeSurface(surfaceMessage);
+    SDL_DestroyTexture(message);
+
+    surfaceMessage = TTF_RenderText_Solid(font, "Play again", green);
+    message = SDL_CreateTextureFromSurface(renderer, surfaceMessage);
+    SDL_Rect playAgainRect = { SCREEN_WIDTH / 2 - surfaceMessage->w / 2, SCREEN_HEIGHT / 2 + 50, surfaceMessage->w, surfaceMessage->h };
+    SDL_RenderCopy(renderer, message, NULL, &playAgainRect);
+    SDL_FreeSurface(surfaceMessage);
+    SDL_DestroyTexture(message);
+
+    surfaceMessage = TTF_RenderText_Solid(font, "Close", red);
+    message = SDL_CreateTextureFromSurface(renderer, surfaceMessage);
+    SDL_Rect closeRect = { SCREEN_WIDTH / 2 - surfaceMessage->w / 2, SCREEN_HEIGHT / 2 + 100, surfaceMessage->w, surfaceMessage->h };
+    SDL_RenderCopy(renderer, message, NULL, &closeRect);
+    SDL_FreeSurface(surfaceMessage);
+    SDL_DestroyTexture(message);
+}
+
+bool isMouseOverRect(int mouseX, int mouseY, SDL_Rect rect) {
+    return mouseX > rect.x && mouseX < rect.x + rect.w && mouseY > rect.y && mouseY < rect.y + rect.h;
 }
 
 int main(int argc, char* args[]) {
@@ -227,31 +263,50 @@ int main(int argc, char* args[]) {
     Snake snake;
     Food food;
     int score = 0;
+    GameState gameState = PLAYING;
 
     while (!quit) {
         while (SDL_PollEvent(&e) != 0) {
             if (e.type == SDL_QUIT) {
                 quit = true;
             } else if (e.type == SDL_KEYDOWN) {
-                switch (e.key.keysym.sym) {
-                case SDLK_UP: snake.setDirection(UP); break;
-                case SDLK_DOWN: snake.setDirection(DOWN); break;
-                case SDLK_LEFT: snake.setDirection(LEFT); break;
-                case SDLK_RIGHT: snake.setDirection(RIGHT); break;
+                if (gameState == PLAYING) {
+                    switch (e.key.keysym.sym) {
+                    case SDLK_UP: snake.setDirection(UP); break;
+                    case SDLK_DOWN: snake.setDirection(DOWN); break;
+                    case SDLK_LEFT: snake.setDirection(LEFT); break;
+                    case SDLK_RIGHT: snake.setDirection(RIGHT); break;
+                    }
+                }
+            } else if (e.type == SDL_MOUSEBUTTONDOWN && gameState == GAME_OVER) {
+                int mouseX, mouseY;
+                SDL_GetMouseState(&mouseX, &mouseY);
+                SDL_Rect playAgainRect = { SCREEN_WIDTH / 2 - 100, SCREEN_HEIGHT / 2 + 50, 200, 50 };
+                SDL_Rect closeRect = { SCREEN_WIDTH / 2 - 100, SCREEN_HEIGHT / 2 + 100, 200, 50 };
+
+                if (isMouseOverRect(mouseX, mouseY, playAgainRect)) {
+                    snake.reset();
+                    food.respawn();
+                    score = 0;
+                    gameState = PLAYING;
+                } else if (isMouseOverRect(mouseX, mouseY, closeRect)) {
+                    quit = true;
                 }
             }
         }
 
-        snake.move();
+        if (gameState == PLAYING) {
+            snake.move();
 
-        if (snake.getHeadPosition().x == food.getPosition().x && snake.getHeadPosition().y == food.getPosition().y) {
-            snake.grow();
-            food.respawn();
-            score += 10;
-        }
+            if (snake.getHeadPosition().x == food.getPosition().x && snake.getHeadPosition().y == food.getPosition().y) {
+                snake.grow();
+                food.respawn();
+                score += 10;
+            }
 
-        if (snake.checkCollision()) {
-            quit = true;
+            if (snake.checkCollision()) {
+                gameState = GAME_OVER;
+            }
         }
 
         SDL_SetRenderDrawColor(renderer, 0, 100, 0, 255);
@@ -262,8 +317,12 @@ int main(int argc, char* args[]) {
 
         renderChessboard(renderer);
 
-        snake.render(renderer);
-        food.render(renderer);
+        if (gameState == PLAYING) {
+            snake.render(renderer);
+            food.render(renderer);
+        } else if (gameState == GAME_OVER) {
+            renderGameOver(renderer, font);
+        }
 
         SDL_RenderPresent(renderer);
 
