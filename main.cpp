@@ -16,7 +16,6 @@ const SDL_Color black = { 0, 0, 0, 255 };
 const SDL_Color red = { 255, 0, 0, 255 };
 const SDL_Color green = { 0, 100, 0, 255 };
 
-
 enum Direction { UP, DOWN, LEFT, RIGHT };
 enum GameState { PLAYING, GAME_OVER };
 
@@ -31,6 +30,7 @@ public:
     }
 
     void reset() {
+        // zeruje weza i inicjuje nowego na pozycji (0, srodek)
         segments.clear();
         segments.push_back({ 0, HEADER_HEIGHT + (SCREEN_HEIGHT - HEADER_HEIGHT) / 2 });
         direction = RIGHT;
@@ -40,6 +40,7 @@ public:
     void move() {
         Position newHead = getHeadPosition();
 
+        // updatuje pozycje glowy na bazie kierunku
         switch (direction) {
         case UP: newHead.y -= UNIT_SIZE; break;
         case DOWN: newHead.y += UNIT_SIZE; break;
@@ -47,8 +48,10 @@ public:
         case RIGHT: newHead.x += UNIT_SIZE; break;
         }
 
+        // wstawia nowa pozycje glowy na poczatku wektora
         segments.insert(segments.begin(), newHead);
 
+        // usun koncowke ogona jesli nie rosnie
         if (!growing) {
             segments.pop_back();
         }
@@ -60,6 +63,7 @@ public:
     }
 
     void setDirection(Direction newDirection) {
+        // zmienia kierunek + zapobiega zawracaniu w miejscu
         if ((direction == UP && newDirection != DOWN) ||
             (direction == DOWN && newDirection != UP) ||
             (direction == LEFT && newDirection != RIGHT) ||
@@ -70,10 +74,12 @@ public:
 
     bool checkCollision() {
         Position head = getHeadPosition();
+        // sprawdza czy waz nie wyszedl poza kolizje
         if (head.x < 0 || head.x >= SCREEN_WIDTH || head.y < HEADER_HEIGHT || head.y >= SCREEN_HEIGHT) {
             return true;
         }
 
+        // sprawdza czy waz nie wszedl sam w siebie
         for (size_t i = 1; i < segments.size(); ++i) {
             if (head.x == segments[i].x && head.y == segments[i].y) {
                 return true;
@@ -83,6 +89,7 @@ public:
     }
 
     void render(SDL_Renderer* renderer) {
+        // rysuje weza
         for (size_t i = 0; i < segments.size(); ++i) {
             if (i == 0) {
                 SDL_SetRenderDrawColor(renderer, 0, 100, 0, 255);
@@ -92,7 +99,7 @@ public:
             drawRoundedRect(renderer, segments[i].x, segments[i].y, UNIT_SIZE, UNIT_SIZE, 5);
         }
     }
-
+    // zwraca pozycje glowy
     Position getHeadPosition() const {
         return segments[0];
     }
@@ -102,6 +109,7 @@ private:
     Direction direction;
     bool growing = false;
 
+    // zaokragla segmenty weza
     void drawRoundedRect(SDL_Renderer* renderer, int x, int y, int w, int h, int r) {
         SDL_Rect rects[3] = {
             { x + r, y, w - 2 * r, h },
@@ -130,21 +138,25 @@ public:
     }
 
     void respawn() {
+        // losowo spawnuje robaka na planszy
         position.x = (rand() % (SCREEN_WIDTH / UNIT_SIZE)) * UNIT_SIZE;
         position.y = HEADER_HEIGHT + (rand() % ((SCREEN_HEIGHT - HEADER_HEIGHT) / UNIT_SIZE)) * UNIT_SIZE;
     }
 
     Position getPosition() const {
+        // kordy robaka
         return position;
     }
 
     void render(SDL_Renderer* renderer) {
+        // rysuje okrag robaka
         drawCircle(renderer, position.x + UNIT_SIZE / 2, position.y + UNIT_SIZE / 2, UNIT_SIZE / 2);
     }
 
 private:
     Position position;
 
+    // wypelnia robaka
     void drawCircle(SDL_Renderer* renderer, int centerX, int centerY, int radius) {
         SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
         for (int w = 0; w < radius * 2; w++) {
@@ -159,6 +171,7 @@ private:
     }
 };
 
+// rysuje tlo planszy
 void renderChessboard(SDL_Renderer* renderer) {
     bool white = true;
     for (int y = HEADER_HEIGHT; y < SCREEN_HEIGHT; y += UNIT_SIZE) {
@@ -176,6 +189,7 @@ void renderChessboard(SDL_Renderer* renderer) {
     }
 }
 
+// rysuje header, nazwe gry i wynik
 void renderHeader(SDL_Renderer* renderer, TTF_Font* font, int score) {
     SDL_Surface* surfaceMessage = TTF_RenderText_Solid(font, "Snake", black);
     SDL_Texture* message = SDL_CreateTextureFromSurface(renderer, surfaceMessage);
@@ -193,6 +207,7 @@ void renderHeader(SDL_Renderer* renderer, TTF_Font* font, int score) {
     SDL_DestroyTexture(message);
 }
 
+// rysuje menu po przegraniu gry
 void renderGameOver(SDL_Renderer* renderer, TTF_Font* font) {
     SDL_Surface* surfaceMessage = TTF_RenderText_Solid(font, "You lost!", red);
     SDL_Texture* message = SDL_CreateTextureFromSurface(renderer, surfaceMessage);
@@ -216,6 +231,7 @@ void renderGameOver(SDL_Renderer* renderer, TTF_Font* font) {
     SDL_DestroyTexture(message);
 }
 
+// sprawdzenie czy kursor myszy jest na przycisku
 bool isMouseOverRect(int mouseX, int mouseY, SDL_Rect rect) {
     return mouseX > rect.x && mouseX < rect.x + rect.w && mouseY > rect.y && mouseY < rect.y + rect.h;
 }
@@ -256,6 +272,7 @@ int main(int argc, char* args[]) {
         return 1;
     }
 
+    // inicjalizacja generatora losowego na podstawie czasu
     srand(static_cast<unsigned>(time(0)));
 
     bool quit = false;
@@ -270,6 +287,7 @@ int main(int argc, char* args[]) {
             if (e.type == SDL_QUIT) {
                 quit = true;
             } else if (e.type == SDL_KEYDOWN) {
+                // obsluga klawiszy sterowania
                 if (gameState == PLAYING) {
                     switch (e.key.keysym.sym) {
                     case SDLK_UP: snake.setDirection(UP); break;
@@ -279,22 +297,26 @@ int main(int argc, char* args[]) {
                     }
                 }
             } else if (e.type == SDL_MOUSEBUTTONDOWN && gameState == GAME_OVER) {
+                // obsluga klikania myszka
                 int mouseX, mouseY;
                 SDL_GetMouseState(&mouseX, &mouseY);
                 SDL_Rect playAgainRect = { SCREEN_WIDTH / 2 - 100, SCREEN_HEIGHT / 2 + 50, 200, 50 };
                 SDL_Rect closeRect = { SCREEN_WIDTH / 2 - 100, SCREEN_HEIGHT / 2 + 100, 200, 50 };
 
                 if (isMouseOverRect(mouseX, mouseY, playAgainRect)) {
+                    // obsluga buttonu play again
                     snake.reset();
                     food.respawn();
                     score = 0;
                     gameState = PLAYING;
                 } else if (isMouseOverRect(mouseX, mouseY, closeRect)) {
+                    // obsluga buttonu zamkniecia
                     quit = true;
                 }
             }
         }
 
+        // logika gry
         if (gameState == PLAYING) {
             snake.move();
 
@@ -309,6 +331,7 @@ int main(int argc, char* args[]) {
             }
         }
 
+        // renderuje gre
         SDL_SetRenderDrawColor(renderer, 0, 100, 0, 255);
         SDL_Rect headerRect = { 0, 0, SCREEN_WIDTH, HEADER_HEIGHT };
         SDL_RenderFillRect(renderer, &headerRect);
