@@ -9,7 +9,6 @@ const int HEADER_HEIGHT = 100;
 const int SCREEN_WIDTH = 800;
 const int SCREEN_HEIGHT = 800 + HEADER_HEIGHT;
 const int NUM_UNITS_X = 20;
-const int NUM_UNITS_Y = (SCREEN_HEIGHT - HEADER_HEIGHT) / ((SCREEN_WIDTH / NUM_UNITS_X));
 const int UNIT_SIZE = SCREEN_WIDTH / NUM_UNITS_X;
 const int FONT_SIZE = 32;
 const SDL_Color black = { 0, 0, 0, 255 };
@@ -25,6 +24,8 @@ struct Position {
 
 class Snake {
 public:
+    std::vector<Position> segments;
+
     Snake() {
         reset();
     }
@@ -105,7 +106,6 @@ public:
     }
 
 private:
-    std::vector<Position> segments;
     Direction direction;
     bool growing = false;
 
@@ -263,7 +263,7 @@ int main(int argc, char* args[]) {
         return 1;
     }
 
-    TTF_Font* font = TTF_OpenFont("C:\\Users\\Jedrzej\\Desktop\\sgd_project\\assets\\arial.ttf", FONT_SIZE);
+    TTF_Font* font = TTF_OpenFont("C:\\Users\\s24299\\Downloads\\sgd_project-main\\sgd_project-main\\assets\\arial.ttf", FONT_SIZE);
     if (!font) {
         std::cerr << "Failed to load font: " << TTF_GetError() << std::endl;
         SDL_DestroyRenderer(renderer);
@@ -348,8 +348,8 @@ int main(int argc, char* args[]) {
         }
 
         SDL_RenderPresent(renderer);
-
-        SDL_Delay(150);
+        int delay = 150 - score / 10;
+        SDL_Delay(delay);
     }
 
     TTF_CloseFont(font);
